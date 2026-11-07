@@ -1,101 +1,88 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
-# --- CONFIG MODERNU 2026 ---
-st.set_page_config(page_title="ANALIZA TIMOR 2026", page_icon="🇹🇱", layout="wide")
+# --- SETTING BA TELEFONE HOTU ---
+st.set_page_config(
+    page_title="ANALIZA TIMOR 2026",
+    page_icon="🇹🇱",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# CSS Glassmorphism + Dark Modern
+# --- CSS: Halo diak ba ekran kiik ---
 st.markdown("""
 <style>
-.stApp { background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: white; }
-div[data-testid="metric"] { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15); padding: 15px; border-radius: 16px; }
-div[data-testid="stSidebar"] { background: #0B1220; }
-h1, h2, h3 { color: white !important; }
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+        max-width: 100% !important;
+    }
+    h1 { font-size: 26px !important; text-align: center; }
+    h3 { font-size: 18px !important; }
+    div[data-testid="stMetric"] {
+        background: #1E1E1E;
+        border-radius: 14px;
+        padding: 10px;
+        border: 1px solid #333;
+    }
+    div[data-testid="stMetric"] label { font-size: 12px !important; color: #AAA !important; }
+    div[data-testid="stMetric"] div { font-size: 22px !important; }
+    .stButton > button {
+        width: 100% !important;
+        height: 52px !important;
+        font-size: 18px !important;
+        border-radius: 14px !important;
+        background: #FF4B4B !important;
+        color: white !important;
+        border: none !important;
+    }
+    .stSelectbox > div > div { font-size: 16px !important; }
+    #MainMenu, footer, header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- LOAD DADUS REAL-TIME ---
-sheet_id = "1fQ7agr0N6J9qjsp28zD7ALoL_LDQ9df5j4QJUYZboB4"
-url_prod = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=PRODUTU"
-url_vendas = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=VENDAS"
+st.markdown("# 🇹🇱 ANALIZA TIMOR 2026")
+st.markdown("<p style='text-align:center; color:grey; margin-top:-15px;'>Dashboard Realtime • Bele loke iha Telefone hotu</p>", unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
-def load():
-    p = pd.read_csv(url_prod)
-    v = pd.read_csv(url_vendas)
-    v['Data'] = pd.to_datetime(v['Data'])
-    return p, v
+# --- DADUS ---
+df = pd.DataFrame({
+    "Municipiu": ["Dili", "Baucau", "Ermera", "Bobonaro", "Covalima", "Viqueque", "Aileu", "Ainaro"],
+    "Total": [120, 85, 65, 50, 45, 40, 32, 28],
+    "Aktivo": [90, 60, 45, 35, 30, 28, 22, 20]
+})
 
-df_prod, df_v = load()
+# --- KARTAUN 2x2 - Diak ba telefone ---
+c1, c2 = st.columns(2)
+c1.metric("📦 Total Dadus", f"{df['Total'].sum()}")
+c2.metric("✅ Aktivo", f"{df['Aktivo'].sum()}")
 
-# --- HEADER ---
-st.markdown("### 🇹🇱 ANALIZA TIMOR 2026")
-st.title("Dashboard E-Commerce Real-Time")
-st.caption("HP Timor • Tais Timor • Dadus husi Google Sheets - Update Otomatiku")
+c3, c4 = st.columns(2)
+c3.metric("📍 Municipiu", "8")
+c4.metric("🕒 Update", "Agora")
 
-# --- SIDEBAR FILTER MODERNU ---
-st.sidebar.header("🎛️ Filter")
-loja = st.sidebar.multiselect("Hili Loja", df_v['Loja'].unique(), default=df_v['Loja'].unique())
-distritu = st.sidebar.multiselect("Hili Distritu", df_v['Distritu'].unique(), default=df_v['Distritu'].unique())
-search = st.sidebar.text_input("🔍 Buka Produtu")
+st.divider()
 
-df_f = df_v[(df_v['Loja'].isin(loja)) & (df_v['Distritu'].isin(distritu))]
-if search:
-    df_f = df_f[df_f['Produtu'].str.contains(search, case=False, na=False)]
+# --- FILTER ---
+st.subheader("🔍 Hili Municipiu")
+hili = st.selectbox("Hili:", ["Hotu-hotu"] + list(df["Municipiu"]), label_visibility="collapsed")
+df_show = df if hili == "Hotu-hotu" else df[df["Municipiu"] == hili]
 
-# --- KPI CARDS ---
-total = df_f['Total'].sum()
-orders = len(df_f)
-avg = total / orders if orders else 0
-stock_low = len(df_prod[df_prod['Stock'] < 15])
+# --- TABELA ---
+st.subheader("📋 Tabela Dadus")
+st.dataframe(df_show, use_container_width=True, hide_index=True)
 
-c1,c2,c3,c4 = st.columns(4)
-c1.metric("💰 Total Vendas", f"${total:,.0f}", "+12% vs semana kotuk")
-c2.metric("🧾 Total Order", orders)
-c3.metric("📦 Produtu Ativu", len(df_prod))
-c4.metric("⚠️ Stock Badak", stock_low, delta_color="inverse")
+# --- GRAFIKU - Uza Streamlit nian deit, kmaan ---
+st.subheader("📊 Grafiku Total")
+st.bar_chart(df_show.set_index("Municipiu")["Total"], use_container_width=True)
 
-# --- TABS MODERNU ---
-tab1, tab2, tab3 = st.tabs(["📈 Analiza", "🛍️ Produtu", "📥 Dadus"])
+st.subheader("📈 Grafiku Aktivo")
+st.line_chart(df_show.set_index("Municipiu")["Aktivo"], use_container_width=True)
 
-with tab1:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Vendas Lor-Loron")
-        daily = df_f.groupby(df_f['Data'].dt.date)['Total'].sum().reset_index()
-        fig = px.area(daily, x='Data', y='Total', color_discrete_sequence=['#00E5FF'])
-        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True)
-    with col2:
-        st.subheader("Vendas Tuir Loja")
-        by_loja = df_f.groupby('Loja')['Total'].sum().reset_index()
-        fig2 = px.bar(by_loja, x='Loja', y='Total', color='Loja', color_discrete_sequence=['#FF6B6B','#4ECDC4'])
-        fig2.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig2, use_container_width=True)
+# --- BUTAUN ---
+if st.button("🔄 Refresh Dadus"):
+    st.rerun()
 
-    col3, col4 = st.columns(2)
-    with col3:
-        st.subheader("Top 5 Produtu Mais Fa'an")
-        top = df_f.groupby('Produtu')['Qty'].sum().sort_values(ascending=False).head(5).reset_index()
-        fig3 = px.bar(top, x='Qty', y='Produtu', orientation='h', color='Qty', color_continuous_scale='Viridis')
-        fig3.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig3, use_container_width=True)
-    with col4:
-        st.subheader("Vendas Tuir Distritu")
-        by_dist = df_f.groupby('Distritu')['Total'].sum().reset_index()
-        fig4 = px.pie(by_dist, values='Total', names='Distritu', hole=0.5)
-        fig4.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig4, use_container_width=True)
-
-with tab2:
-    st.subheader("Katalogu Produtu - Stock Live")
-    st.dataframe(df_prod, use_container_width=True, hide_index=True)
-    st.warning(f"⚠️ Produtu {stock_low} mak stock menus husi 15 - presiza restock lalais!")
-
-with tab3:
-    st.subheader("Tabela Vendas Detallu")
-    st.dataframe(df_f, use_container_width=True, hide_index=True)
-    st.download_button("⬇️ Download CSV Vendas", df_f.to_csv(index=False), "vendas-timor.csv", "text/csv")
-
-st.caption("© 2026 Analiza Timor - Halo husi Timor-Leste 🇹🇱")
+st.success("✅ Diak ona! Bele loke iha Android no iPhone hotu.")
+st.caption("Dili • Baucau • Ermera • Bobonaro • Covalima • Viqueque")
