@@ -70,7 +70,7 @@ if len(df_hoje)==0:
 
 # ============ TITULU ============
 st.markdown("# 🇹🇱 SISTEMA ANALIZA REAL-TIME WOOCOMMERCE")
-st.markdown("<p style='text-align:center;color:grey;margin-top:-12px;'>Luzio DIT • Loja HP Timor<br>API → Kafka → Spark → PostgreSQL + MongoDB → ML → Streamlit</p>", unsafe_allow_html=True)
+
 
 # Filter global - hanesan Fase 6: filtru loja no periodu
 cF1, cF2 = st.columns(2)
