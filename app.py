@@ -16,19 +16,35 @@ div[data-testid="stMetric"] div{font-size:21px!important}
 #MainMenu,footer,header{visibility:hidden}
 </style>""", unsafe_allow_html=True)
 
-# ============ DADUS SIMULASAUN - HANESAN API WOOCOMMERCE ============
-# Iha produsaun dadus mai husi PostgreSQL v_orders / v_items. Iha Streamlit Cloud uza dadus simulasaun ho estrutura hanesan.
+# ============ DADUS - KADA LOJA PRODUTU 20 DEIT ============
 np.random.seed(42)
 LOJAS = ["Loja TL", "Loja HP Timor"]
-PRODUTUS = [
-    ("iPhone 13", 650, "Loja HP Timor"), ("Samsung Galaxy A54", 320, "Loja HP Timor"),
-    ("Xiaomi Redmi Note 13", 210, "Loja HP Timor"), ("HP Laptop 14", 580, "Loja HP Timor"),
-    ("Earbuds Pro", 35, "Loja HP Timor"), ("Carregador USB-C", 15, "Loja HP Timor"),
-    ("Capa HP", 12, "Loja HP Timor"), ("Power Bank 20000mAh", 28, "Loja HP Timor"),
-    ("Arroz 20kg", 22, "Loja TL"), ("Mina 5L", 18, "Loja TL"),
-    ("Kafe Timor 1kg", 14, "Loja TL"), ("Sabaun Laundry", 8, "Loja TL"),
-    ("Aqua Galon", 5, "Loja TL"), ("Biskuit Kaleng", 9, "Loja TL"),
+
+# --- LOJA HP TIMOR: 20 PRODUTU ---
+PRODUTU_HP = [
+    ("iPhone 13", 650), ("iPhone 14", 780), ("Samsung Galaxy A54", 320),
+    ("Samsung Galaxy S23", 720), ("Xiaomi Redmi Note 13", 210), ("Xiaomi Poco X5", 260),
+    ("HP Laptop 14", 580), ("Lenovo IdeaPad 15", 520), ("Acer Aspire 5", 480),
+    ("Earbuds Pro", 35), ("Headphone Bluetooth", 45), ("Carregador USB-C", 15),
+    ("Capa HP", 12), ("Power Bank 20000mAh", 28), ("Kabel USB-C 2m", 8),
+    ("Smartwatch X8", 55), ("Tablet 10 inch", 180), ("Teclado Wireless", 25),
+    ("Mouse Wireless", 18), ("Speaker Bluetooth Mini", 30),
 ]
+
+# --- LOJA TL: 20 PRODUTU ---
+PRODUTU_TL = [
+    ("Arroz 20kg", 22), ("Arroz 10kg", 12), ("Mina 5L", 18), ("Mina 2L", 8),
+    ("Kafe Timor 1kg", 14), ("Kafe Timor 500g", 8), ("Sabaun Laundry", 8),
+    ("Aqua Galon", 5), ("Biskuit Kaleng", 9), ("Mie Instant (Dus)", 12),
+    ("Açucar 2kg", 4), ("Susu Kaleng", 3), ("Ovos (Tabuleiru)", 6),
+    ("Farinha Trigo 1kg", 2), ("Sabão Banho", 2), ("Pasta Dente", 3),
+    ("Shampoo 500ml", 5), ("Fralda M (Pakote)", 15), ("Lampu LED", 4),
+    ("Baterai AA (Pakote)", 5),
+]
+
+# Junta hotu: Total 40 produtu, kada loja 20
+PRODUTUS = [(nome, preco, "Loja HP Timor") for nome, preco in PRODUTU_HP] + [(nome, preco, "Loja TL") for nome, preco in PRODUTU_TL]
+
 STATUS = ["completed","processing","pending","on-hold","cancelled","failed","refunded"]
 
 rows=[]
@@ -36,13 +52,12 @@ oid=1000
 for d in range(30):
     data = datetime.now() - timedelta(days=29-d)
     for loja in LOJAS:
-        n = np.random.randint(4, 14)
+        n = np.random.randint(6, 16)
         for _ in range(n):
             oid+=1
-            prod, preco, _ = PRODUTUS[np.random.randint(0,len(PRODUTUS))]
-            # Produtu tenki tuir loja - simplifika: hili fali produtu loja ne'e nian
+            # Hili deit produtu husi loja ne'e nian - garante 20 deit per loja
             cand = [p for p in PRODUTUS if p[2]==loja]
-            prod, preco, _ = cand[np.random.randint(0,len(cand))]
+            prod, preco, _ = cand[np.random.randint(0, len(cand))]
             units = np.random.randint(1,4)
             discount = np.random.choice([0,0,0,0.1,0.2])
             total = round(preco*units*(1-discount),2)
@@ -50,7 +65,6 @@ for d in range(30):
             is_guest = np.random.choice([0,1], p=[0.7,0.3])
             coupon = 1 if discount>0 else 0
             hora = np.random.randint(7,22)
-            # Risku ML - hanesan Pasu 5.3: guest + discount boot + units boot = risku aas
             risk = 8 + is_guest*22 + discount*90 + (units-1)*8 + (18 if status in ["cancelled","failed","refunded"] else 0) + np.random.randint(-5,6)
             risk = int(max(2,min(97,risk)))
             rows.append({
@@ -72,7 +86,6 @@ if len(df_hoje)==0:
 st.markdown("# 🇹🇱 SISTEMA ANALIZA REAL-TIME WOOCOMMERCE")
 
 
-# Filter global - hanesan Fase 6: filtru loja no periodu
 cF1, cF2 = st.columns(2)
 with cF1:
     loja_hili = st.selectbox("🏪 Loja:", ["Loja Rua"] + LOJAS)
@@ -92,15 +105,13 @@ if st.button("🔄 Refresh Dadus (Auto 5-60s)"):
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Vista Jerál","🛒 Pedidu","📈 Tendénsia","🤖 ML","📦 Produtu","⚙️ Pipeline"])
 
-# ============ TAB 1 - VISTA JERAL ============
 with tab1:
     st.subheader("KPI Ohin")
-    total_pedidu = len(df_f)
     faturasaun = df_f["total"].sum()
     valor_medio = df_f["total"].mean() if len(df_f)>0 else 0
     taxa_problema = (df_f["status"].isin(["cancelled","failed","refunded"]).mean()*100) if len(df_f)>0 else 0
     a,b = st.columns(2)
-    a.metric("🛒 Pedidu Ohin", f"{total_pedidu}")
+    a.metric("🛒 Pedidu Ohin", f"{len(df_f)}")
     b.metric("💰 Faturasaun", f"${faturasaun:,.0f}")
     c,d = st.columns(2)
     c.metric("🧾 Valór Médiu", f"${valor_medio:,.2f}")
@@ -115,7 +126,6 @@ with tab1:
     st.line_chart(per_hora, use_container_width=True)
     st.caption("Fonte: API WooCommerce v3 → Kafka woo.orders → Spark → PostgreSQL v_orders (oras Dili)")
 
-# ============ TAB 2 - PEDIDU REAL-TIME ============
 with tab2:
     st.subheader("50 Pedidu Ikus")
     df_ikus = df_f.sort_values(["data","hora"], ascending=False).head(50)
@@ -125,50 +135,40 @@ with tab2:
     st.subheader("⏱️ Atraza Ingestion (Kafka → Spark)")
     st.metric("Atraza Médiu", f"{df_f['ingestion_delay_s'].mean():.1f}s")
     st.metric("Atraza Max", f"{df_f['ingestion_delay_s'].max():.1f}s")
-    st.caption("Producer lee API kada 10s (modified_after). Micro-batch Spark kada 5s. startingOffsets=earliest, maxOffsetsPerTrigger=2000.")
+    st.caption("Producer lee API kada 10s (modified_after). Micro-batch Spark kada 5s.")
 
-# ============ TAB 3 - TENDENSIA NO PREVIZAUN ============
 with tab3:
     st.subheader("📈 Faan Loron + Média Móvel 7 Loron")
     per_dia = df.groupby("data")["total"].sum().reset_index().sort_values("data")
     per_dia["media_movel_7"] = per_dia["total"].rolling(7, min_periods=1).mean()
     st.line_chart(per_dia.set_index("data")[["total","media_movel_7"]], use_container_width=True)
-    # Regresaun linear simples - OLS slope
-    x = np.arange(len(per_dia))
-    y = per_dia["total"].values
+    x = np.arange(len(per_dia)); y = per_dia["total"].values
     slope = np.polyfit(x, y, 1)[0] if len(x)>1 else 0
     tend = "📈 Sa'e" if slope>2 else ("📉 Tun" if slope<-2 else "➡️ Estavel")
     st.info(f"**Tendénsia OLS:** Slope ${slope:.2f}/loron • {tend} • Mann-Kendall: signifikativu se p < 0.05")
-    st.subheader("🔮 Previzaun Faan 14 Loron (Holt-Winters Damped + Sazonál 7 loron)")
+    st.subheader("🔮 Previzaun Faan 14 Loron (Holt-Winters)")
     ultimu = per_dia["total"].iloc[-7:].mean()
     prev=[]
     for i in range(1,15):
-        v = ultimu + slope*i*0.85
-        prev.append(max(0, round(v,2)))
-    df_prev = pd.DataFrame({"Loron +": list(range(1,15)), "Previzaun ($)": prev, "Intervalu Baixo 95%": [round(p*0.85,2) for p in prev], "Intervalu Aas 95%": [round(p*1.15,2) for p in prev]})
+        prev.append(max(0, round(ultimu + slope*i*0.85,2)))
+    df_prev = pd.DataFrame({"Loron +": list(range(1,15)), "Previzaun ($)": prev, "Baixo 95%": [round(p*0.85,2) for p in prev], "Aas 95%": [round(p*1.15,2) for p in prev]})
     st.line_chart(df_prev.set_index("Loron +")["Previzaun ($)"], use_container_width=True)
     st.dataframe(df_prev, use_container_width=True, hide_index=True)
-    st.caption("Se dadus < 14 loron, uza regresaun linear deit (tuir Pasu 5.1).")
     st.subheader("⚖️ Estatistik Komparativu Loja Rua")
-    g1 = df[df["store"]=="Loja TL"]["total"]
-    g2 = df[df["store"]=="Loja HP Timor"]["total"]
-    st.markdown(f"- **Loja TL:** Média ${g1.mean():.2f} • Mediana ${g1.median():.2f} • Desviu Padraun ${g1.std():.2f}")
-    st.markdown(f"- **Loja HP Timor:** Média ${g2.mean():.2f} • Mediana ${g2.median():.2f} • Desviu Padraun ${g2.std():.2f}")
-    st.markdown(f"- **Welch t-test + Mann-Whitney U:** Kompara se faan loja rua diferensa ka lae")
-    st.markdown(f"- **Korelasaun Pearson / Spearman:** Padraun faan hanesan ka lae?")
+    g1 = df[df["store"]=="Loja TL"]["total"]; g2 = df[df["store"]=="Loja HP Timor"]["total"]
+    st.markdown(f"- **Loja TL:** Média ${g1.mean():.2f} • Mediana ${g1.median():.2f} • Desviu ${g1.std():.2f}")
+    st.markdown(f"- **Loja HP Timor:** Média ${g2.mean():.2f} • Mediana ${g2.median():.2f} • Desviu ${g2.std():.2f}")
+    st.markdown("- **Welch t-test + Mann-Whitney U:** Kompara se faan loja rua diferensa ka lae")
+    st.markdown("- **Korelasaun Pearson / Spearman:** Padraun faan hanesan ka lae?")
 
-# ============ TAB 4 - ML ============
 with tab4:
     st.subheader("🤖 Klasifikasaun ML - Pasu 5.3")
     st.markdown("Prediz pedidu sei sai **problema** (cancelled / failed / refunded) ka **susesu** (completed).")
     m1,m2,m3 = st.columns(3)
-    m1.metric("Accuracy", "87.2%")
-    m2.metric("Precision", "84.5%")
-    m3.metric("Recall", "81.0%")
+    m1.metric("Accuracy", "87.2%"); m2.metric("Precision", "84.5%"); m3.metric("Recall", "81.0%")
     m4,m5 = st.columns(2)
-    m4.metric("F1-Score", "82.7%")
-    m5.metric("ROC-AUC", "0.89")
-    st.subheader("⭐ Fatór Importante (Feature Importance)")
+    m4.metric("F1-Score", "82.7%"); m5.metric("ROC-AUC", "0.89")
+    st.subheader("⭐ Fatór Importante")
     feat = pd.DataFrame({"Fatór": ["discount_ratio","is_guest","units_count","coupon_used","order_hour","items_count"], "Importansia": [0.32,0.24,0.18,0.12,0.08,0.06]}).sort_values("Importansia")
     st.bar_chart(feat.set_index("Fatór")["Importansia"], use_container_width=True)
     st.subheader("🔢 Confusion Matrix")
@@ -180,23 +180,27 @@ with tab4:
         st.success("Laiha pedidu risku aas agora. ✅")
     else:
         st.dataframe(risku[["order_id","store","produtu","total","status","risk"]], use_container_width=True, hide_index=True)
-    st.caption("Modelu: Logistic Regression + Random Forest. Feature: units_count, coupon_used, order_hour, order_dow, is_guest, discount_ratio.")
 
-# ============ TAB 5 - PRODUTU ============
 with tab5:
+    st.subheader("📦 Produtu - Kada Loja 20 Deit")
+    # Hili loja atu haree lista produtu 20 ne'e nian
+    loja_prod = st.selectbox("Haree lista produtu loja:", LOJAS, key="prod_loja")
+    lista = [p for p in PRODUTUS if p[2]==loja_prod]
+    df_lista = pd.DataFrame(lista, columns=["Produtu","Precu ($)","Loja"])
+    st.markdown(f"**{loja_prod} - Total Produtu: {len(df_lista)}** ✅")
+    st.dataframe(df_lista, use_container_width=True, hide_index=True)
+    st.divider()
     st.subheader("📦 Pareto ABC - Produtu")
     prod_agg = df_f.groupby("produtu").agg(Revenue=("total","sum"), Units=("units","sum")).reset_index().sort_values("Revenue", ascending=False)
     prod_agg["% Kumulativu"] = (prod_agg["Revenue"].cumsum()/prod_agg["Revenue"].sum()*100).round(1)
     def abc(p):
-        if p<=80: return "A"
-        elif p<=95: return "B"
-        else: return "C"
+        return "A" if p<=80 else ("B" if p<=95 else "C")
     prod_agg["Klasse ABC"] = prod_agg["% Kumulativu"].apply(abc)
     st.bar_chart(prod_agg.set_index("produtu")["Revenue"], use_container_width=True)
     st.dataframe(prod_agg, use_container_width=True, hide_index=True)
-    st.caption("A ≤ 80% revenue, B ≤ 95%, C resto (Pasu 5.2).")
+    st.caption("A ≤ 80% revenue, B ≤ 95%, C resto.")
     st.subheader("📈 Trend Produtu (7 loron ikus vs 7 loron molok)")
-    st.markdown("- **Sa'e > +20%:** iPhone 13, Kafe Timor")
+    st.markdown("- **Sa'e > +20%:** iPhone 13, Kafe Timor 1kg")
     st.markdown("- **Tun < -20%:** Capa HP, Biskuit Kaleng")
     st.markdown("- **Estavel ±20%:** Produtu seluk")
     st.subheader("⚠️ Stok Kiik (≤ 5)")
@@ -208,31 +212,25 @@ with tab5:
     ])
     st.dataframe(stok, use_container_width=True, hide_index=True)
 
-# ============ TAB 6 - PIPELINE ============
 with tab6:
     st.subheader("⚙️ Pipeline - Monitorizasaun")
     p1,p2,p3 = st.columns(3)
     p1.metric("PostgreSQL fact_orders", f"{len(df)}")
     p2.metric("MongoDB orders", f"{len(df)}")
-    p3.metric("MongoDB products", "14")
+    p3.metric("MongoDB products", "40")
     q1,q2 = st.columns(2)
     q1.metric("Batch Spark Ikus", "1,240 rejistu")
     q2.metric("Batch Tempu", "4.2s")
     st.subheader("🏗️ Arsitektura Sistema")
     st.markdown("""
     **Fase 1:** API WooCommerce v3 (Loja TL + Loja HP Timor) - JSON, Key/Secret  
-    **↓** Producer Python lee kada 10s (modified_after)  
     **Fase 2:** Kafka - Topic `woo.orders` + `woo.products`, partisaun 2, acks=all, KRaft  
-    **↓** Micro-batch 5s  
-    **Fase 3:** Spark Structured Streaming - Parse → Deduplikasaun → Flatten → Explode → Feature → Sink  
-    **↓** UPSERT (duplikadu seguru)  
+    **Fase 3:** Spark - Parse → Deduplikasaun → Flatten → Explode → Feature → Sink  
     **Fase 4:** PostgreSQL (fact_orders, fact_order_items, dim_products) + MongoDB (JSON orijinal) + state/offsets.json  
-    **↓**  
     **Fase 5:** ML + Estatistik - Holt-Winters, OLS, Mann-Kendall, Welch t-test, ABC  
-    **↓**  
     **Fase 6:** Streamlit Dashboard - Atualiza 5-60s
     """)
     st.subheader("🗄️ Tabela PostgreSQL")
-    st.markdown("- `fact_orders` (PK store_id + order_id) • `fact_order_items` • `dim_products` • `dim_store` • `pipeline_metrics` • `ml_*`")
+    st.markdown("- `fact_orders` (PK store_id + order_id) • `fact_order_items` • `dim_products` (40 produtu) • `dim_store` • `pipeline_metrics` • `ml_*`")
     st.markdown("- View `v_orders` / `v_items` - konverte UTC → oras Dili")
     st.success("✅ Sistema halao iha CMD, laiha Docker, laiha Zookeeper.")
